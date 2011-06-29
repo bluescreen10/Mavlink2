@@ -8,6 +8,7 @@ use constant {
 
     # General
     MAVLINK_VERSION => 2,
+    SIGNATURE       => 0x55,
 
     # MAV Type
     MAV_GENERIC    => 0,
@@ -27,7 +28,7 @@ use constant {
 };
 
 our @EXPORT = qw(
-  MAVLINK_VERSION
+  MAVLINK_VERSION SIGNATURE
 
   MAV_GENERIC MAV_FIXED_WING MAV_QUADROTOR
   MAV_COAXIAL MAV_HELICOPTER MAV_GROUND OCU

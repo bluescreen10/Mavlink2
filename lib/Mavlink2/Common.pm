@@ -3,25 +3,44 @@ package Mavlink2::Common;
 use strict;
 use warnings;
 
-our $SEQUENCE = 0;
+my $sequence = 0;
+
+my %messages = (
+    'Mavlink2::HeartBeat'  => 0,
+    'Mavlink2::Boot'       => 1,
+    'Mavlink2::SystemTime' => 2,
+);
 
 use constant {
     SIGNATURE        => pack( 'C', 0x55 ),
     INITIAL_CHECKSUM => 0xffff
 };
 
+sub class_from_id {
+    my ( $class, $id ) = @_;
+    while ( my ( $message_class, $message_id ) = each(%messages) ) {
+        return $message_class if ( $id == $message_id );
+    }
+}
+
+sub id_for_class {
+    return $messages{ $_[1] };
+}
+
 sub _build_packet {
     my ( $class, $system_id, $component_id, $message_id, $payload ) = @_;
 
     my $packet = pack( 'C*',
-        length($payload), $SEQUENCE++, $system_id,
+        length($payload), $sequence++, $system_id,
         $component_id,    $message_id );
+
+    $sequence = 0 if ( $sequence > 255 );
 
     $packet .= $payload;
 
     my $checksum = $class->_compute_checksum($packet);
 
-    return SIGNATURE . $packet . pack( "CC", $checksum & 0xff, $checksum >> 8 );
+    return "${\SIGNATURE}$packet".pack( "v", $checksum );
 }
 
 sub _compute_checksum {
