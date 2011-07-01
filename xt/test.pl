@@ -8,7 +8,7 @@ use Mavlink2;
 my $uav = Mavlink2->new(
     system_id    => 4,
     component_id => 200,
-    type         => MAV_FIXED_WING,
+    type         => MAV_QUADROTOR,
     autopilot    => MAV_AUTOPILOT_GENERIC
 );
 

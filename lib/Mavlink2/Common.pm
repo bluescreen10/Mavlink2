@@ -6,9 +6,10 @@ use warnings;
 my $sequence = 0;
 
 my %messages = (
-    'Mavlink2::HeartBeat'  => 0,
-    'Mavlink2::Boot'       => 1,
-    'Mavlink2::SystemTime' => 2,
+    'Mavlink2::HeartBeat'    => 0,
+    'Mavlink2::Boot'         => 1,
+    'Mavlink2::SystemTime'   => 2,
+    'Mavlink2::SystemStatus' => 34,
 );
 
 use constant {
@@ -40,7 +41,7 @@ sub _build_packet {
 
     my $checksum = $class->_compute_checksum($packet);
 
-    return "${\SIGNATURE}$packet".pack( "v", $checksum );
+    return "${\SIGNATURE}$packet" . pack( "v", $checksum );
 }
 
 sub _compute_checksum {

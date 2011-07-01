@@ -15,6 +15,7 @@ sub from {
 }
 
 sub packet_drop_count {
+    print "$packet_drop_count\n";
     $packet_drop_count;
 }
 
