@@ -1,5 +1,7 @@
 package Mavlink2;
 
+our $VERSION = '1.00';
+
 use strict;
 use warnings;
 use IO::Socket::INET;
@@ -10,8 +12,12 @@ use Mavlink2::Boot;
 use Mavlink2::SystemTime;
 use Mavlink2::SystemStatus;
 use Mavlink2::Input;
+use Mavlink2::Action;
+use Mavlink2::ActionAcknowledge;
 use Mavlink2::Constants;
+use Mavlink2::RequestDataStream;
 use Exporter qw();
+
 use Class::Accessor qw(antlers);
 
 has load            => ( is => 'rw' );
@@ -28,13 +34,57 @@ has handler_for     => ( is => 'r' );
 has is_connected    => ( is => 'r' );
 
 use constant {
-    BUFFER_SIZE        => 2048,
-    MAX_TIMEOUT        => 500,
-    HEARTBEAT_INTERVAL => 1,
-    STATUS_INTERVAL    => 5,
+    BUFFER_SIZE      => 2048,
+    MAX_TIMEOUT      => 500,
+    DEFAULT_INTERVAL => 1,
+    LOAD_SAMPLES     => 10,
 };
 
-our $VERSION = '1.00';
+my %action_handler_for = (
+    0  => 'on_action_hold',
+    1  => 'on_action_start_motors',
+    2  => 'on_action_launch',
+    3  => 'on_action_return',
+    4  => 'on_action_emergency_land',
+    5  => 'on_action_emergency_kill',
+    6  => 'on_action_confirm_kill',
+    7  => 'on_action_continue',
+    8  => 'on_action_motors_stop',
+    9  => 'on_action_halt',
+    10 => 'on_action_shutdown',
+    11 => 'on_action_reboot',
+    12 => 'on_action_set_manual',
+    13 => 'on_action_set_auto',
+    14 => 'on_action_storage_read',
+    15 => 'on_action_storage_write',
+    16 => 'on_action_calibrate_rc',
+    17 => 'on_action_calibrate_gyroscope',
+    18 => 'on_action_calibrate_magnetometer',
+    19 => 'on_action_calibrate_accelerometer',
+    20 => 'on_action_calibrate_pressure',
+    21 => 'on_action_recorder_start',
+    22 => 'on_action_recorder_pause',
+    23 => 'on_action_recorder_stop',
+    24 => 'on_action_take_off',
+    25 => 'on_action_navigate',
+    26 => 'on_action_land',
+    27 => 'on_action_lotier',
+    28 => 'on_action_set_origin',
+    29 => 'on_action_relay_on',
+    30 => 'on_action_relay_off',
+    31 => 'on_action_get_image',
+    32 => 'on_action_video_start',
+    33 => 'on_action_video_stop',
+    34 => 'on_action_reset_map',
+    35 => 'on_action_reset_plan',
+    36 => 'on_action_delay_before_command',
+    37 => 'on_action_ascend_at_rate',
+    38 => 'on_action_change_mode',
+    39 => 'on_action_lotier_max_turns',
+    40 => 'on_action_lotier_max_time',
+    41 => 'on_action_start_hilsim',
+    42 => 'on_action_stop_hilsim'
+);
 
 sub import {
     my $class = shift;
@@ -73,15 +123,25 @@ sub connect {
 
         $self->_send_boot_sequence;
 
+        my @last_loads;
+        my $index;
+
         while ($running) {
             my $start_time = time();
 
             $self->_single_step;
 
             # Calculate Load
+            my $load_avg = 0;
+            map { $load_avg += $_ / LOAD_SAMPLES } @last_loads;
+            $self->{load} = $load_avg;
+
             my $total_time = time() - $start_time;
             my $busy_time  = $total_time - $self->{idle_time};
-            $self->{load} = int( $busy_time / $total_time * 1000 );
+
+            $last_loads[$index++] = $busy_time / $total_time;
+            $index = 0 if ( $index > LOAD_SAMPLES );
+
         }
 
         $self->_disconnect;
@@ -94,16 +154,26 @@ sub connect {
 
 }
 
+sub change_schedule {
+    my ( $self, $name, $new_interval ) = @_;
+    if ( exists $self->{scheduled_tasks}->{$name} ) {
+        $self->{scheduled_tasks}->{$name}->{interval} = $new_interval;
+    }
+}
+
+sub delete_schedule {
+    my ( $self, $name ) = @_;
+    delete $self->{scheduled_tasks}->{$name};
+}
+
 sub schedule {
-    my ( $self, $interval, $code_ref ) = @_;
+    my ( $self, $name, $interval, $code_ref ) = @_;
 
-    $interval = int($interval);
-
-    unless ( $interval && ref $code_ref eq 'CODE' ) {
+    unless ( $name and $interval and ref $code_ref eq 'CODE' ) {
         warn 'Can\'t schedule an invalid task';
     }
 
-    $self->{scheduled_tasks}->{ +$code_ref } = {
+    $self->{scheduled_tasks}->{$name} = {
         last     => 0,
         interval => $interval,
         code_ref => $code_ref
@@ -173,9 +243,6 @@ Intialize Client with default values
 sub _init {
     my $self = shift;
 
-    $self->{status_interval} = 60;
-    $self->{status_tstamp}   = 0;
-
     $self->{recv_tstamp}     = 0;
     $self->{timeout}         = 10;
     $self->{host}            = '127.0.0.1';
@@ -187,16 +254,6 @@ sub _init {
     $self->{navigation_mode} = MAV_NAV_GROUNDED;
     $self->{general_status}  = MAV_STATE_BOOT;
     $self->{handler_for}     = {};
-
-    $self->_init_scheduler;
-
-}
-
-sub _init_scheduler {
-    my $self = shift;
-
-    $self->schedule( HEARTBEAT_INTERVAL, sub { $self->_send_heartbeat } );
-
 }
 
 sub _call_handler {
@@ -220,7 +277,8 @@ sub _call_handler {
 sub _call_on_connect_handler {
     my $self = shift;
     if ( $self->_call_handler('on_connect') ) {
-        $self->schedule( STATUS_INTERVAL, sub { $self->_send_status } );
+        $self->schedule( 'heartbeat', DEFAULT_INTERVAL,
+            sub { $self->_send_heartbeat } );
     }
 }
 
@@ -231,6 +289,48 @@ sub _call_on_start_handler {
     }
 }
 
+sub _dispatch_action_handler {
+    my ( $self, $action ) = @_;
+
+    my $handler_name = $action_handler_for{$action};
+
+    $self->_send_action_ack(
+        $action,
+        (
+            exists $self->{handler_for}->{$handler_name}
+              and $self->_call_handler($handler_name)
+        )
+    );
+}
+
+sub _process_data_stream_request {
+    my ( $self, $id, $rate, $is_required ) = @_;
+
+    my @messages;
+
+    if ( $id == MAV_DATA_STREAM_ALL ) {
+        @messages = ( 'send_status', 'send_heartbeat' );
+    }
+
+    elsif ( $id == MAV_DATA_STREAM_EXTENDED_STATUS ) {
+        @messages = ('send_status');
+    }
+
+    foreach (@messages) {
+        if ( $is_required and exists $self->{scheduled_tasks}->{$_} ) {
+            $self->{scheduled_tasks}->{$_}->{interval} = 1 /$rate;
+        }
+        elsif ($is_required) {
+            my $method = "_$_";
+            $self->schedule( $_, 1 / $rate, sub { $self->$method } );
+        }
+        elsif ( not $is_required and exists $self->{scheduled_tasks}->{$_} ) {
+            $self->delete_schedule($_);
+        }
+    }
+
+}
+
 sub _process_events {
     my $self = shift;
 
@@ -238,11 +338,26 @@ sub _process_events {
     my $packet = Mavlink2::Input->from($buffer);
 
     if ($packet) {
-        if ( $packet->isa('Mavlink2::HeartBeat') and not $self->{is_connected} )
+        if ( $packet->isa('Mavlink2::HeartBeat')
+            and not $self->{is_connected} )
         {
             $self->{is_connected} = 1;
             $self->_call_on_connect_handler;
         }
+
+        elsif ( $packet->isa('Mavlink2::Action')
+            and $packet->is_for( $self->{system_id}, $self->{component_id} ) )
+        {
+            $self->_dispatch_action_handler( $packet->action );
+        }
+
+        elsif ( $packet->isa('Mavlink2::RequestDataStream')
+            and $packet->is_for( $self->{system_id}, $self->{component_id} ) )
+        {
+            $self->_process_data_stream_request( $packet->stream_id,
+                $packet->stream_rate, $packet->is_required );
+        }
+
     }
 
     $self->{recv_tstamp} = time();
@@ -294,6 +409,16 @@ sub _send_heartbeat {
     return 1;
 }
 
+sub _send_action_ack {
+    my ( $self, $action, $result ) = @_;
+
+    $self->{socket}->send(
+        Mavlink2::ActionAcknowledge->new( $self->{system_id},
+            $self->{component_id}, $action, $result )->serialize
+    );
+
+}
+
 sub _send_boot_sequence {
     my $self = shift;
 
@@ -319,7 +444,7 @@ sub _send_status {
             system_mode     => $self->{system_mode},
             navigation_mode => $self->{navigation_mode},
             general_status  => $self->{general_status},
-            load            => $self->{load},
+            load            => int( $self->{load} * 1000 ),
             battery_voltage => $self->{battery_voltage},
             battery_level   => $self->{battery_level}
           )->serialize

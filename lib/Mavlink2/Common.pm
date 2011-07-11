@@ -2,14 +2,18 @@ package Mavlink2::Common;
 
 use strict;
 use warnings;
+use Class::Accessor qw(antlers);
 
 my $sequence = 0;
 
 my %messages = (
-    'Mavlink2::HeartBeat'    => 0,
-    'Mavlink2::Boot'         => 1,
-    'Mavlink2::SystemTime'   => 2,
-    'Mavlink2::SystemStatus' => 34,
+    'Mavlink2::HeartBeat'         => 0,
+    'Mavlink2::Boot'              => 1,
+    'Mavlink2::SystemTime'        => 2,
+    'Mavlink2::ActionAcknowledge' => 9,
+    'Mavlink2::Action'            => 10,
+    'Mavlink2::SystemStatus'      => 34,
+    'Mavlink2::RequestDataStream' => 66,
 );
 
 use constant {
@@ -19,7 +23,8 @@ use constant {
 
 sub class_from_id {
     my ( $class, $id ) = @_;
-    while ( my ( $message_class, $message_id ) = each(%messages) ) {
+    foreach my $message_class ( keys %messages) {
+        my $message_id = $messages{$message_class};
         return $message_class if ( $id == $message_id );
     }
 }

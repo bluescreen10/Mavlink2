@@ -160,7 +160,7 @@ C_FILES  =
 O_FILES  = 
 H_FILES  = 
 MAN1PODS = 
-MAN3PODS = 
+MAN3PODS = lib/Mavlink2.pm
 
 # Where is the Config information that we are using/depend on
 CONFIGDEP = $(PERL_ARCHLIB)$(DFSEP)Config.pm $(PERL_INC)$(DFSEP)config.h
@@ -183,27 +183,39 @@ PERL_ARCHIVE_AFTER =
 
 
 TO_INST_PM = lib/Mavlink2.pm \
+	lib/Mavlink2/Action.pm \
+	lib/Mavlink2/ActionAcknowledge.pm \
 	lib/Mavlink2/Boot.pm \
 	lib/Mavlink2/Common.pm \
 	lib/Mavlink2/Constants.pm \
 	lib/Mavlink2/HeartBeat.pm \
 	lib/Mavlink2/Input.pm \
+	lib/Mavlink2/RequestDataStream.pm \
+	lib/Mavlink2/SystemStatus.pm \
 	lib/Mavlink2/SystemTime.pm
 
 PM_TO_BLIB = lib/Mavlink2/Common.pm \
 	blib/lib/Mavlink2/Common.pm \
-	lib/Mavlink2/Input.pm \
-	blib/lib/Mavlink2/Input.pm \
 	lib/Mavlink2/HeartBeat.pm \
 	blib/lib/Mavlink2/HeartBeat.pm \
+	lib/Mavlink2/RequestDataStream.pm \
+	blib/lib/Mavlink2/RequestDataStream.pm \
+	lib/Mavlink2/ActionAcknowledge.pm \
+	blib/lib/Mavlink2/ActionAcknowledge.pm \
+	lib/Mavlink2/SystemStatus.pm \
+	blib/lib/Mavlink2/SystemStatus.pm \
+	lib/Mavlink2.pm \
+	blib/lib/Mavlink2.pm \
+	lib/Mavlink2/Input.pm \
+	blib/lib/Mavlink2/Input.pm \
 	lib/Mavlink2/SystemTime.pm \
 	blib/lib/Mavlink2/SystemTime.pm \
 	lib/Mavlink2/Constants.pm \
 	blib/lib/Mavlink2/Constants.pm \
 	lib/Mavlink2/Boot.pm \
 	blib/lib/Mavlink2/Boot.pm \
-	lib/Mavlink2.pm \
-	blib/lib/Mavlink2.pm
+	lib/Mavlink2/Action.pm \
+	blib/lib/Mavlink2/Action.pm
 
 
 # --- MakeMaker platform_constants section:
@@ -424,8 +436,10 @@ POD2MAN_EXE = $(PERLRUN) "-MExtUtils::Command::MM" -e pod2man "--"
 POD2MAN = $(POD2MAN_EXE)
 
 
-manifypods : pure_all 
-	$(NOECHO) $(NOOP)
+manifypods : pure_all  \
+	lib/Mavlink2.pm
+	$(NOECHO) $(POD2MAN) --section=$(MAN3EXT) --perm_rw=$(PERM_RW) \
+	  lib/Mavlink2.pm $(INST_MAN3DIR)/Mavlink2.$(MAN3EXT) 
 
 
 
@@ -794,12 +808,16 @@ ppd :
 pm_to_blib : $(FIRST_MAKEFILE) $(TO_INST_PM)
 	$(NOECHO) $(ABSPERLRUN) -MExtUtils::Install -e 'pm_to_blib({@ARGV}, '\''$(INST_LIB)/auto'\'', q[$(PM_FILTER)], '\''$(PERM_DIR)'\'')' -- \
 	  lib/Mavlink2/Common.pm blib/lib/Mavlink2/Common.pm \
-	  lib/Mavlink2/Input.pm blib/lib/Mavlink2/Input.pm \
 	  lib/Mavlink2/HeartBeat.pm blib/lib/Mavlink2/HeartBeat.pm \
+	  lib/Mavlink2/RequestDataStream.pm blib/lib/Mavlink2/RequestDataStream.pm \
+	  lib/Mavlink2/ActionAcknowledge.pm blib/lib/Mavlink2/ActionAcknowledge.pm \
+	  lib/Mavlink2/SystemStatus.pm blib/lib/Mavlink2/SystemStatus.pm \
+	  lib/Mavlink2.pm blib/lib/Mavlink2.pm \
+	  lib/Mavlink2/Input.pm blib/lib/Mavlink2/Input.pm \
 	  lib/Mavlink2/SystemTime.pm blib/lib/Mavlink2/SystemTime.pm \
 	  lib/Mavlink2/Constants.pm blib/lib/Mavlink2/Constants.pm \
 	  lib/Mavlink2/Boot.pm blib/lib/Mavlink2/Boot.pm \
-	  lib/Mavlink2.pm blib/lib/Mavlink2.pm 
+	  lib/Mavlink2/Action.pm blib/lib/Mavlink2/Action.pm 
 	$(NOECHO) $(TOUCH) pm_to_blib
 
 
