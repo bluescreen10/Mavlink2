@@ -3,8 +3,9 @@ package Mavlink2::RequestDataStream;
 use strict;
 use warnings;
 use Mavlink2::Constants;
-use base qw(Mavlink2::Common);
-use Class::Accessor qw(antlers);
+use Mouse;
+
+extends 'Mavlink2::Common';
 
 has system_id           => ( is => 'ro' );
 has component_id        => ( is => 'ro' );
@@ -19,15 +20,13 @@ sub deserialize {
     my @values = ( unpack( "CCCCCCCCnC", $packet ) )[ 2, 3, 5, 6, 7, 8, 9, 10 ];
 
     $class->new(
-        {
-            system_id           => $values[0],
-            component_id        => $values[1],
-            target_system_id    => $values[2],
-            target_component_id => $values[3],
-            stream_id           => $values[4],
-            stream_rate         => $values[5],
-            is_required         => $values[6]
-        }
+        system_id           => $values[0],
+        component_id        => $values[1],
+        target_system_id    => $values[2],
+        target_component_id => $values[3],
+        stream_id           => $values[4],
+        stream_rate         => $values[5],
+        is_required         => $values[6]
     );
 }
 

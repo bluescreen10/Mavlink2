@@ -16,6 +16,8 @@ use Mavlink2::Action;
 use Mavlink2::ActionAcknowledge;
 use Mavlink2::Constants;
 use Mavlink2::RequestDataStream;
+use Mavlink2::SetSystemMode;
+use Mavlink2::ManualControl;
 use Exporter qw();
 
 use Class::Accessor qw(antlers);
@@ -100,6 +102,17 @@ sub new {
     $self->_init;
 
     return $self;
+}
+
+sub add_handler {
+    my ( $self, $name, $code_ref ) = @_;
+
+    unless ( $name && ref $code_ref eq 'CODE' ) {
+        warn 'Invalid handler';
+        return;
+    }
+
+    $self->{handler_for}->{$name} = $code_ref;
 }
 
 sub connect {
@@ -356,6 +369,10 @@ sub _process_events {
         {
             $self->_process_data_stream_request( $packet->stream_id,
                 $packet->stream_rate, $packet->is_required );
+        }
+      
+        elsif ( $packet->isa('Mavlink2::SetSystemMode') ) {
+            $self->_call_handler( 'on_action_set_manual' );
         }
 
     }

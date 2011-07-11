@@ -190,7 +190,9 @@ TO_INST_PM = lib/Mavlink2.pm \
 	lib/Mavlink2/Constants.pm \
 	lib/Mavlink2/HeartBeat.pm \
 	lib/Mavlink2/Input.pm \
+	lib/Mavlink2/ManualControl.pm \
 	lib/Mavlink2/RequestDataStream.pm \
+	lib/Mavlink2/SetSystemMode.pm \
 	lib/Mavlink2/SystemStatus.pm \
 	lib/Mavlink2/SystemTime.pm
 
@@ -200,6 +202,8 @@ PM_TO_BLIB = lib/Mavlink2/Common.pm \
 	blib/lib/Mavlink2/HeartBeat.pm \
 	lib/Mavlink2/RequestDataStream.pm \
 	blib/lib/Mavlink2/RequestDataStream.pm \
+	lib/Mavlink2/ManualControl.pm \
+	blib/lib/Mavlink2/ManualControl.pm \
 	lib/Mavlink2/ActionAcknowledge.pm \
 	blib/lib/Mavlink2/ActionAcknowledge.pm \
 	lib/Mavlink2/SystemStatus.pm \
@@ -214,6 +218,8 @@ PM_TO_BLIB = lib/Mavlink2/Common.pm \
 	blib/lib/Mavlink2/Constants.pm \
 	lib/Mavlink2/Boot.pm \
 	blib/lib/Mavlink2/Boot.pm \
+	lib/Mavlink2/SetSystemMode.pm \
+	blib/lib/Mavlink2/SetSystemMode.pm \
 	lib/Mavlink2/Action.pm \
 	blib/lib/Mavlink2/Action.pm
 
@@ -810,6 +816,7 @@ pm_to_blib : $(FIRST_MAKEFILE) $(TO_INST_PM)
 	  lib/Mavlink2/Common.pm blib/lib/Mavlink2/Common.pm \
 	  lib/Mavlink2/HeartBeat.pm blib/lib/Mavlink2/HeartBeat.pm \
 	  lib/Mavlink2/RequestDataStream.pm blib/lib/Mavlink2/RequestDataStream.pm \
+	  lib/Mavlink2/ManualControl.pm blib/lib/Mavlink2/ManualControl.pm \
 	  lib/Mavlink2/ActionAcknowledge.pm blib/lib/Mavlink2/ActionAcknowledge.pm \
 	  lib/Mavlink2/SystemStatus.pm blib/lib/Mavlink2/SystemStatus.pm \
 	  lib/Mavlink2.pm blib/lib/Mavlink2.pm \
@@ -817,6 +824,7 @@ pm_to_blib : $(FIRST_MAKEFILE) $(TO_INST_PM)
 	  lib/Mavlink2/SystemTime.pm blib/lib/Mavlink2/SystemTime.pm \
 	  lib/Mavlink2/Constants.pm blib/lib/Mavlink2/Constants.pm \
 	  lib/Mavlink2/Boot.pm blib/lib/Mavlink2/Boot.pm \
+	  lib/Mavlink2/SetSystemMode.pm blib/lib/Mavlink2/SetSystemMode.pm \
 	  lib/Mavlink2/Action.pm blib/lib/Mavlink2/Action.pm 
 	$(NOECHO) $(TOUCH) pm_to_blib
 
